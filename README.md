@@ -186,8 +186,54 @@ server {
 ---
 ### 5. member 테이블에서 장기간 미접속한 회원들을 unconnected_member 테이블로 이전시키고자 한다, 가장 호율적으로 이전시킬 수 있는 방법을 코딩하시오
 **60만개의 미접속한 회원 데이터를 빠르게 찾는것이 가장 중요하다고 생각하였습니다.**
+- 실제 테스트에는 700만개의 데이터를 다 넣지 못하고 20만개의 데이터를 넣고 그중 10만개의 데이터가 장기가 미접속한 회원들이라고 가정하고 테스트 했습니다.
+- 데이터베이스에 데이터를 넣는 부분은 /routes/test5Router.js 를 통해 확인하실 수 있습니다.
 - 따라서 미접속한 회원들을 찾기 위해 last_login_time 속성을 이용하였는데 이때 datetime 타입 보다는 unixtime 으로 정수형 타입을 사용하는게 훨씬 빠르게 찾을것이라고 생각했습니다.
 - 추가로 last_login_time 속성에 index를 추가하여 검색을 빠르게 할 수 있도록 설정하였습니다.
+- 아래는 datetime을 이용한 코드와 unixtime을 이용한 코드입니다.
+```sql
+-- datetime 이용
+insert into unconnected_member
+select * from member
+where last_login_time <= '2021-02-02 00:00:00';
+
+delete from member where last_login_time <= '2021-02-02 00:00:00';
+
+-- unixtime 이용
+insert into new_unconnected_member
+select * from new_member
+where last_login_time <= unix_timestamp('2021-02-02 00:00:00');
+
+delete from new_member
+where last_login_time <= unix_timestamp('2021-02-02 00:00:00');
+```
+- 아래는 datetime을 이용한 결과입니다. => 10.157s
+![image](https://user-images.githubusercontent.com/91299082/164985575-5980f757-51d8-4a55-8ad5-e5f089a9ebce.png)
+- 아래는 unixtime을 이용한 결과입니다. => 11.095s
+![image](https://user-images.githubusercontent.com/91299082/164985599-23d83e67-878e-4dad-9b43-b1eca3feb86e.png)
+
+
+**결과**
+
+위에서 작성한 조건 아래에서 여러번 테스트한 결과 insert 이후 delete까지 걸리는 시간은 datetime을 이용하는 경우가 더 빨랐습니다.
+
+하지만 개인적으로 유저를 옮기는 것이 더 중요하고 delete 하는 과정은 이후에 여유롭게 진행할 수 있다고 생각했기 때문에 insert 하는 부분의 시간이 조금이라도 더 빠른
+unixtime을 이용한 쿼리를 이용하는 것이 더 좋다고 생각하고, delete 시간 까지 고려한다면 상황에 맞게 datetime을 이용하면 좋을것 같습니다.
+
+만약 삭제할때 last_login_time에 설정한 index를 잠시 삭제한 이후 delete 문을 진행하고 이후 다시 해당 속성에 index를 설정해주는 방법을 이용한다면
+삭제 시간을 좀 더 단축시킬 수 있을것 같습니다.
+
+- 아래는 제가 최종적으로 생각한 테이블 구조입니다.
+
+
+|이름|형태|기타|설명|
+|:---:|:---:|:---:|:---:|
+|id|int10|PK|회원 고유키|
+|email|varchar(100)|index|이메일|
+|name|varchar(50)|-|이름|
+|join_date|datetime|-|회원가입시간|
+|last_login_time|int|unsigned, index|마지막 로그인 시간|
+
 
 
 
