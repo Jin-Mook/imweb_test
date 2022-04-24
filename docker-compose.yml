@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  mysql: 
+    platform: linux/amd64
+    image: mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: test5
+  
+  redis:
+    image: redis
+    command: redis-server --port 6379
+    container_name: test3
+    ports:
+      - "6379:6379"
+
+
